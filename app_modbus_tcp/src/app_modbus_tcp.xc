@@ -124,22 +124,25 @@ static int read_temperature(r_i2c &p_i2c)
  *  \param address    address of coil to read
  *  \return           coil value
  **/
-static unsigned short read_coil(unsigned short address)
+static short read_coil(unsigned short address, unsigned short &rtnval)
 {
   unsigned char led_status = 0;
+  rtnval = 0;
 
-  if(address > 3) { return MODBUS_READ_1BIT_ERROR; }
+  if(address > 3) { return MODBUS_READ_OR_WRITE_ERROR; }
 
   p_led :> led_status;
   p_led <: led_status;
 
   if(led_status & (0x01 << address))
   {
-    return 1;
+    rtnval = 1;
+    return MODBUS_READ_OR_WRITE_OK;
   }
   else
   {
-    return 0;
+    rtnval = 0;
+    return MODBUS_READ_OR_WRITE_OK;
   }
 }
 
@@ -163,21 +166,23 @@ static unsigned short read_coil(unsigned short address)
  *  \param address    address of discrete input to read
  *  \return           discrete input value
  **/
-static unsigned short read_discrete_input(unsigned short address)
+static short read_discrete_input(unsigned short address, unsigned short &rtnval)
 {
-  unsigned short rtnval = button_status;
+  rtnval = button_status;
 
   if(address > 1)
   {
-    return MODBUS_READ_1BIT_ERROR;
+    return MODBUS_READ_OR_WRITE_ERROR;
   }
 
   button_status &= ~(1 << address);
   if(rtnval & (1 << address))
   {
-    return 1;
+    rtnval = 1;
+    return MODBUS_READ_OR_WRITE_OK;
   }
-  return 0;
+  rtnval = 0;
+  return MODBUS_READ_OR_WRITE_OK;
 }
 
 /*==========================================================================*/
@@ -191,9 +196,10 @@ static unsigned short read_discrete_input(unsigned short address)
  *  \param address    address of Holding Register to read
  *  \return           Holding Register value
  **/
-static unsigned short read_holding_register(unsigned short address)
+static short read_holding_register(unsigned short address, unsigned short &rtnval)
 {
-  return MODBUS_READ_16BIT_ERROR;
+  rtnval = 0;
+  return MODBUS_READ_OR_WRITE_ERROR;
 }
 
 /*==========================================================================*/
@@ -209,15 +215,17 @@ static unsigned short read_holding_register(unsigned short address)
  *  \param address    address of Input Register to read
  *  \return           Input Register value
  **/
-static unsigned short read_input_register(unsigned short address)
+static short read_input_register(unsigned short address, unsigned short &rtnval)
 {
+  rtnval = 0;
   if(address == 0)
   {
-    return (unsigned short)(read_temperature(p_i2c));
+    rtnval = (unsigned short)(read_temperature(p_i2c));
+    return MODBUS_READ_OR_WRITE_OK;
   }
   else
   {
-    return MODBUS_READ_16BIT_ERROR;
+    return MODBUS_READ_OR_WRITE_ERROR;
   }
 }
 
@@ -237,29 +245,31 @@ static unsigned short read_input_register(unsigned short address)
  *  \param address    address of coil to toggle
  *  \return           write status
  **/
-static unsigned short write_single_coil(unsigned short address,
-                                        unsigned short value)
+static short write_single_coil(unsigned short address,
+                                        unsigned short value, unsigned short &rtnval)
 {
   int led_status;
-
+  rtnval = 0;
   if(address > 3)
   {
-    return MODBUS_WRITE_ERROR;
+    return MODBUS_READ_OR_WRITE_ERROR;
   }
 
   p_led :> led_status;
 
-  if(led_status & (1 << address))
-  {
-    led_status &= ~(1 << address);
-  }
-  else
-  {
-    led_status |= (1 << address);
-  }
+  if((led_status & (1 << address)) == value){
+   }
+   else if(led_status & (1 << address))
+   {
+     led_status &= ~(1 << address);
+   }
+   else
+   {
+     led_status |= (1 << address);
+   }
 
   p_led <: led_status;
-  return MODBUS_WRITE_OK;
+  return MODBUS_READ_OR_WRITE_OK;
 }
 
 /*==========================================================================*/
@@ -272,10 +282,11 @@ static unsigned short write_single_coil(unsigned short address,
  *  \param address    address of Register to write to
  *  \return           write status
  **/
-static unsigned short write_single_register(unsigned short address,
-                                            unsigned short value)
+static short write_single_register(unsigned short address,
+                                            unsigned short value, unsigned short &rtnval)
 {
-  return MODBUS_WRITE_ERROR;
+  rtnval = 0;
+  return MODBUS_READ_OR_WRITE_ERROR;
 }
 
 /*==========================================================================*/
@@ -314,6 +325,7 @@ static void device_application(chanend c_modbus)
       case c_modbus :> unsigned char cmd:
       {
         unsigned short address, value, rtnval;
+        short rtnstatus;
 
         c_modbus :> address;
         c_modbus :> value;
@@ -322,42 +334,48 @@ static void device_application(chanend c_modbus)
         {
           case MODBUS_READ_COIL:
           {
-            rtnval = read_coil(address);
+            rtnstatus = read_coil(address, rtnval);
+            c_modbus <: rtnstatus;
             c_modbus <: rtnval;
             break;
           }
 
           case MODBUS_READ_DISCRETE_INPUT:
           {
-            rtnval = read_discrete_input(address);
+            rtnstatus = read_discrete_input(address, rtnval);
+            c_modbus <: rtnstatus;
             c_modbus <: rtnval;
             break;
           }
 
           case MODBUS_READ_HOLDING_REGISTER:
           {
-            rtnval = read_holding_register(address);
+            rtnstatus = read_holding_register(address, rtnval);
+            c_modbus <: rtnstatus;
             c_modbus <: rtnval;
             break;
           }
 
           case MODBUS_READ_INPUT_REGISTER:
           {
-            rtnval = read_input_register(address);
+            rtnstatus = read_input_register(address, rtnval);
+            c_modbus <: rtnstatus;
             c_modbus <: rtnval;
             break;
           }
 
           case MODBUS_WRITE_SINGLE_COIL:
           {
-            rtnval = write_single_coil(address, value);
+            rtnstatus = write_single_coil(address, value, rtnval);
+            c_modbus <: rtnstatus;
             c_modbus <: rtnval;
             break;
           }
 
           case MODBUS_WRITE_SINGLE_REGISTER:
           {
-            rtnval = write_single_register(address, value);
+            rtnstatus = write_single_register(address, value, rtnval);
+            c_modbus <: rtnstatus;
             c_modbus <: rtnval;
             break;
           }

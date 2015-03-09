@@ -8,9 +8,11 @@
  ----
 
  ===========================================================================*/
-
 #ifndef __mb_util_h__
 #define __mb_util_h__
+
+
+#include <xccompat.h>
 
 /*---------------------------------------------------------------------------
  nested include files
@@ -43,20 +45,24 @@
  *  unsigned char: Modbus command
  *  unsigned short: Address to read/write
  *  unsigned short: Value to write (sent always. on read command, this is 0)
+ *  unsigned short: Return register value
  *
  *  And expects:
- *  unsigned short: value (for Read) or status (for write)
+ *  unsigned short: Return register value
+ *  short: Return status
  *
- *  \param c_modbus   Channel connecting to top-level application
- *  \param fn_code    Modbus Function code
- *  \param address    Device address
- *  \param value      Value
- *  \return           Value/Status
+ *  \param      c_modbus   Channel connecting to top-level application
+ *  \param      fn_code    Modbus Function code
+ *  \param      address    Device address
+ *  \param      value      Value
+ *  \reference  read_value Return Value
+ *  \return     rtn_status Return Status
  **/
-unsigned short access_external_device(chanend c_modbus,
-                                      unsigned char fn_code,
-                                      unsigned short address,
-                                      unsigned short value);
+short access_external_device(chanend c_modbus,
+                             unsigned char fn_code,
+                             unsigned short address,
+                             unsigned short value,
+                             REFERENCE_PARAM(unsigned short, read_value));
 
 #endif // __mb_util_h__
 /*==========================================================================*/

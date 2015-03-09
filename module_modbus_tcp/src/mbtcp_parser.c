@@ -75,6 +75,7 @@ enum modbus_exception
  static variables
  ---------------------------------------------------------------------------*/
 static uint8_t modbus_exception_code;
+static uint16_t read_value = 0;
 
 /*---------------------------------------------------------------------------
  static prototypes
@@ -160,7 +161,8 @@ static int modbus_read_data(chanend c_modbus,
       uint16_t i;
       uint16_t index_status = MODBUS_SIZE_MBAP + 2u;
       uint8_t index_byte, index_bit;
-      uint16_t read_value = 0;
+      int16_t rtn_status = 0;
+     // uint16_t read_value = 0;
 
       // Get number of bytes = qty/8 (+1)**
       uint8_t byte_count = modbus_get_byte_count(qty);
@@ -194,22 +196,23 @@ static int modbus_read_data(chanend c_modbus,
                    index_bit = i % 8u;
 
                    // any error here should be exception code 4u
-                   read_value = access_external_device(c_modbus,
-                                                MODBUS_READ_COIL,
-                                                (i+address),
-                                                0);
-                   if (read_value == 1u)
+                   rtn_status = access_external_device(c_modbus,
+                                                       MODBUS_READ_COIL,
+                                                      (i+address),
+                                                      0,
+                                                      &read_value);
+
+                   if (rtn_status == -1){
+                       modbus_exception_code = SLAVE_DEVICE_FAILURE;
+                       break;
+                   }
+                   else if ((rtn_status == 0) && (read_value == 1u))
                    {
                        data[index_status + index_byte] |= (1u << index_bit);
                    }
-                   else if (read_value == 0u)
+                   else if ((rtn_status == 0) && (read_value == 0u))
                    {
                        data[index_status + index_byte] &= ~(1u << index_bit);
-                   }
-                   else
-                   {
-                       modbus_exception_code = SLAVE_DEVICE_FAILURE;
-                       break;
                    }
                } // for qty
                break;
@@ -248,23 +251,23 @@ static int modbus_read_data(chanend c_modbus,
                   index_bit = i % 8u;
 
                   // any error here should be exception code 4u
-                  read_value = access_external_device(c_modbus,
-                                                MODBUS_READ_DISCRETE_INPUT,
-                                                (i+address),
-                                                0);
+                  rtn_status = access_external_device(c_modbus,
+                                                      MODBUS_READ_DISCRETE_INPUT,
+                                                      (i+address),
+                                                      0,
+                                                      &read_value);
 
-                  if (read_value == 1u)
+                  if (rtn_status == -1){
+                      modbus_exception_code = SLAVE_DEVICE_FAILURE;
+                      break;
+                  }
+                  else if ((rtn_status == 0) && (read_value == 1u))
                   {
                       data[index_status + index_byte] |= (1u << index_bit);
                   }
-                  else if (read_value == 0u)
+                  else if ((rtn_status == 0) && (read_value == 0u))
                   {
                       data[index_status + index_byte] &= ~(1u << index_bit);
-                  }
-                  else
-                  {
-                      modbus_exception_code = SLAVE_DEVICE_FAILURE;
-                      break;
                   }
               } // for qty
           }
@@ -301,22 +304,22 @@ static int modbus_read_data(chanend c_modbus,
                for (i = 0; i < qty; i++)
                {
                    // any error here should be exception code 4u
-                   read_value = access_external_device(c_modbus,
-                                                     MODBUS_READ_HOLDING_REGISTER,
-                                                     (i+address),
-                                                     0);
+                   rtn_status = access_external_device(c_modbus,
+                                                       MODBUS_READ_HOLDING_REGISTER,
+                                                       (i+address),
+                                                       0,
+                                                       &read_value);
 
-                   if (read_value)
+                   if (rtn_status == -1){
+                       modbus_exception_code = SLAVE_DEVICE_FAILURE;
+                       break;
+                   }
+                   else if ((rtn_status == 0) && (read_value))
                    {
                        data[index_status + (i * 2)] = (uint8_t) ((uint16_t)
                        (read_value) >> 8u);
                        data[index_status + (i * 2) + 1u] = read_value;
                    }
-                   else
-                  {
-                       modbus_exception_code = SLAVE_DEVICE_FAILURE;
-                       break;
-                  }
                } // for qty
           }// if address check
           else{
@@ -352,21 +355,21 @@ static int modbus_read_data(chanend c_modbus,
              for (i = 0; i < qty; i++)
              {
                 // any error here should be exception code 4u
-                read_value = access_external_device(c_modbus,
-                                                MODBUS_READ_INPUT_REGISTER,
-                                                (i+address),
-                                                0);
+                rtn_status = access_external_device(c_modbus,
+                                                    MODBUS_READ_INPUT_REGISTER,
+                                                    (i+address),
+                                                    0,
+                                                    &read_value);
 
-               if (read_value)
+               if (rtn_status == -1){
+                   modbus_exception_code = SLAVE_DEVICE_FAILURE;
+                   break;
+               }
+               else if ((rtn_status == 0) && (read_value))
                {
                   data[index_status + (i * 2)] = (uint8_t) ((uint16_t)
                       (read_value) >> 8u);
                   data[index_status + (i * 2) + 1u] = read_value;
-               }
-               else
-               {
-                  modbus_exception_code = SLAVE_DEVICE_FAILURE;
-                  break;
                }
              } // for qty
            }//if address check
@@ -403,7 +406,7 @@ int modbus_tcp_parse_request(chanend c_modbus, char *data, int len)
       << 8u) + (uint16_t) (data[MODBUS_INDEX_START_DATA + 3u]));
 
   modbus_exception_code = 0u;
-
+  //uint16_t read_value = 0;
   // Check protocol ID
   if (pid != MODBUS_PROTOCOL_IDENTIFIER)
   {
@@ -470,7 +473,7 @@ int modbus_tcp_parse_request(chanend c_modbus, char *data, int len)
          {
            //Check if address is within range
            if(check_range(address, MODBUS_ADDRESS_START, MODBUS_ADDRESS_END)){
-               uint16_t read_value = 0;
+               int16_t rtn_status = 0;
 
                // Get number of bytes
                uint8_t byte_count = 4u;
@@ -485,17 +488,18 @@ int modbus_tcp_parse_request(chanend c_modbus, char *data, int len)
                data[MODBUS_INDEX_LENGTH_FIELD + 1u] = response_length + 1u;
 
                // any error here should be exception code 4u
-               read_value = access_external_device(c_modbus,
+               rtn_status = access_external_device(c_modbus,
                                                    MODBUS_WRITE_SINGLE_COIL,
                                                    address,
-                                                   qty);
+                                                   qty,
+                                                   &read_value);
 
-               if (read_value)
-               {
+               if(rtn_status == -1){
+                   modbus_exception_code = SLAVE_DEVICE_FAILURE;
+                   break;
                }
                else
                {
-                   modbus_exception_code = SLAVE_DEVICE_FAILURE;
                }
            }//if address check
            else{
@@ -519,7 +523,7 @@ int modbus_tcp_parse_request(chanend c_modbus, char *data, int len)
       {
           //Check if address is within range
           if (check_range(address, MODBUS_ADDRESS_START, MODBUS_ADDRESS_END)){
-               uint16_t read_value = 0;
+               int16_t rtn_status = 0;
 
               // Get number of bytes
               uint8_t byte_count = 4u;
@@ -534,16 +538,17 @@ int modbus_tcp_parse_request(chanend c_modbus, char *data, int len)
             data[MODBUS_INDEX_LENGTH_FIELD + 1u] = response_length + 1u;
 
             // any error here should be exception code 4u
-            read_value = access_external_device(c_modbus,
+            rtn_status = access_external_device(c_modbus,
                                                 MODBUS_WRITE_SINGLE_REGISTER,
                                                 address,
-                                                qty);
+                                                qty,
+                                                &read_value);
 
-             if (read_value){
+             if (rtn_status == -1){
+                 modbus_exception_code = SLAVE_DEVICE_FAILURE;
+                 break;
              }
              else{
-                   modbus_exception_code = SLAVE_DEVICE_FAILURE;
-                   break;
              }
           }//if address check
           else{

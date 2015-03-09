@@ -41,17 +41,19 @@
 /*---------------------------------------------------------------------------
  Access External Device
  ---------------------------------------------------------------------------*/
-unsigned short access_external_device(chanend c_modbus,
-                                      unsigned char fn_code,
-                                      unsigned short address,
-                                      unsigned short value)
+short access_external_device(chanend c_modbus,
+                             unsigned char fn_code,
+                             unsigned short address,
+                             unsigned short value,
+                             unsigned short &read_value)
 {
-  unsigned short rtnval;
+  short rtnstatus;
   c_modbus <: fn_code;
   c_modbus <: address;
   c_modbus <: value;
-  c_modbus :> rtnval;
-  return rtnval;
+  c_modbus :> rtnstatus;
+  c_modbus :> read_value;
+  return rtnstatus;
 }
 
 /*==========================================================================*/
