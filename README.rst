@@ -18,8 +18,8 @@ The Modbus TCP Server component accepts data from the TCP layers and processes t
 Fixed Issues
 ============
 
-  * Address range checks introduced in the module according to the protocal implementation. 
-  * Read request fails if hoding register has a value that is 0.
+  * Address range checks introduced in the module according to the protocol implementation. 
+  * Read request fails if holding register has a value that is 0.
   * Toggling of LED in write coil implementation for consecutive execution.
 
 Known Issues
