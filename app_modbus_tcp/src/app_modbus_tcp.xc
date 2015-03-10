@@ -15,6 +15,7 @@
 #include <platform.h>
 #include "modbus_tcp.h"
 #include "i2c.h"
+#include "timer.h"
 
 /*---------------------------------------------------------------------------
  constants
@@ -117,12 +118,14 @@ static int read_temperature(r_i2c &p_i2c)
  *  Bit2 is LED2 status (1 is OFF and 0 is ON)
  *  Bit3 is LED3 status (1 is OFF and 0 is ON)
  *  XX is Don't care.
+ *  On Read coil success it returns MODBUS_READ_OR_WRITE_OK
  *  Other coil addresses return as device failures (no LEDs at such addresses)
- *  Device failure return value for coil = MODBUS_READ_1BIT_ERROR
+ *  Device failure return value for coil = MODBUS_READ_OR_WRITE_ERROR
  *  (present in mb_codes.h)
  *
  *  \param address    address of coil to read
- *  \return           coil value
+ *  \rtnval           coil value
+ *  \return           coil status
  **/
 static short read_coil(unsigned short address, unsigned short &rtnval)
 {
@@ -159,12 +162,14 @@ static short read_coil(unsigned short address, unsigned short &rtnval)
  *  Bit0 is SW1 status (1 is Button Pressed)
  *  Bit1 is SW2 status (1 is Button Pressed)
  *  XX is Don't care.
+ *  On Read Discrete Input success it returns MODBUS_READ_OR_WRITE_OK
  *  Other addresses return as device failures (no Buttons at such addresses)
- *  Device failure return value for discrete input = MODBUS_READ_1BIT_ERROR
+ *  Device failure return value for discrete input = MODBUS_READ_OR_WRITE_ERROR
  *  (present in mb_codes.h)
  *
  *  \param address    address of discrete input to read
- *  \return           discrete input value
+ *  \rtnval           discrete input value
+ *  \return           return status
  **/
 static short read_discrete_input(unsigned short address, unsigned short &rtnval)
 {
@@ -187,18 +192,30 @@ static short read_discrete_input(unsigned short address, unsigned short &rtnval)
 
 /*==========================================================================*/
 /**
- *  Read Holding Register values. Not implemented in this app.
+ *  Read Holding Register values. The 32-bit timer available is imitated as holding register.
+ *  LSB of the timer is read in this app. Return value is connected to Holding Register
+ *  address 0 of the Modbus.
+ *  On Read Holding Register success it returns MODBUS_READ_OR_WRITE_OK
  *  All addresses return as device failures (no Holding Register at such
  *  addresses)
- *  Device failure return value for Holding register = MODBUS_READ_16BIT_ERROR
+ *  Device failure return value for Holding register = MODBUS_READ_OR_WRITE_ERROR
  *  (present in mb_codes.h)
  *
  *  \param address    address of Holding Register to read
+ *  \rtnval           Return timer LSB value
  *  \return           Holding Register value
  **/
 static short read_holding_register(unsigned short address, unsigned short &rtnval)
 {
-  rtnval = 0;
+  timer tmr;
+  unsigned short temp;
+  if(address == 0)
+    {
+      tmr :> temp;
+      rtnval = temp & 0xFFFF;
+      return MODBUS_READ_OR_WRITE_OK;
+    }
+
   return MODBUS_READ_OR_WRITE_ERROR;
 }
 
@@ -207,13 +224,15 @@ static short read_holding_register(unsigned short address, unsigned short &rtnva
  *  Read Input Register values. The temperature sensor present on the GPIO slice
  *  is imitated as an Input register. Temperature from this sensor is read using
  *  I2C. This sensor is connected to Input Register address 0 of the Modbus.
+ *  On Read Input Register success it returns MODBUS_READ_OR_WRITE_OK
  *  All other addresses return as device failures (no Input Register at such
  *  addresses)
- *  Device failure return value for Input Register = MODBUS_READ_16BIT_ERROR
+ *  Device failure return value for Input Register = MODBUS_READ_OR_WRITE_ERROR
  *  (present in mb_codes.h)
  *
  *  \param address    address of Input Register to read
- *  \return           Input Register value
+ *  \rtnval           Register Value
+ *  \return           return status
  **/
 static short read_input_register(unsigned short address, unsigned short &rtnval)
 {
@@ -238,6 +257,7 @@ static short read_input_register(unsigned short address, unsigned short &rtnval)
  *  Modbus First Register 2 = LED1
  *  Modbus First Register 3 = LED2
  *  Modbus First Register 4 = LED3
+ *  On Write Single Coil success it retuns MODBUS_READ_OR_WRITE_OK
  *  Other coil addresses return as device failures (no LEDs at such addresses)
  *  Device failure return value for write coil = MODBUS_WRITE_ERROR
  *  (present in mb_codes.h)
@@ -276,7 +296,7 @@ static short write_single_coil(unsigned short address,
 /**
  *  Write to Register. Not implemented in this app.
  *  All addresses return as device failures (no Register at such addresses)
- *  Device failure return value for Write register = MODBUS_WRITE_ERROR
+ *  Device failure return value for Write register = MODBUS_READ_OR_WRITE_ERROR
  *  (present in mb_codes.h)
  *
  *  \param address    address of Register to write to
@@ -295,8 +315,8 @@ static short write_single_register(unsigned short address,
  *  as coils / registers. In this Demo application:
  *  Coils are mapped to LEDs on the GPIO Slice.
  *  Discrete Input are mapped to Buttons on the GPIO Slice.
- *  Holding Registers are mapped to Temperature sensor on the GPIO Slice.
- *  Input Register are not mapped.
+ *  Holding Registers are mapped to Timer
+ *  Input Registers are mapped to Temperature sensor on the GPIO Slice..
  *
  *  \param c_modbus   channel to receive Modbus commands from the
  *                    modbus_tcp_server

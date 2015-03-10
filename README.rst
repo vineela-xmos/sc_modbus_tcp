@@ -15,10 +15,22 @@ http://www.modbus.org/specs.php
 
 The Modbus TCP Server component accepts data from the TCP layers and processes them for Modbus commands. If the received TCP data is a Modbus command, the component requests data from/to the user application. The request (Modbus Command) is usually to read/write values from/to registers, coils, etc... After this, the component forms the required Modbus response, sends it back to the TCP client (Modbus Master) and waits for next Modbus command.
 
-Known issues
+Fixed Issues
 ============
 
-none
+  * Address range checks introduced in the module according to the protocal implementation. 
+  * Read request fails if hoding register has a value that is 0.
+
+Known Issues
+============
+
+Module:
+ 
+  * Module code restructuring
+
+Application:
+
+  * LED toggles in write coil implementation for consecutive script execution.
 
 Support
 =======

@@ -11,3 +11,4 @@ A demonstration application in which the Modbus TCP Server component is used wit
 * Turn GPIO sliceCARD LEDs ON and OFF
 * Read the room temperature via the on-board ADC
 * Display GPIO sliceCARD button presses
+* Read Timer's LSB value.

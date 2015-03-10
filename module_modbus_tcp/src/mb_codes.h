@@ -42,15 +42,6 @@ enum modbus_cmd
  * \brief Modbus Error Status due to Read / Write operation performed by the
  *        application.
  */
-//enum modbus_error
-//{
-//  MODBUS_READ_1BIT_ERROR  = 2,  /**<Application fails to read coil (or) discrete
-//                                input*/
-//  MODBUS_READ_16BIT_ERROR = 0,  /**<Application fails to read registers */
-//  MODBUS_WRITE_OK         = 1,  /**<Application Writes successfully */
-//  MODBUS_WRITE_ERROR      = 0,  /**<Application fails to write */
-//};
-
 enum modbus_error
 {
   MODBUS_READ_OR_WRITE_ERROR  = -1,  /**<Application fails to read write*/
