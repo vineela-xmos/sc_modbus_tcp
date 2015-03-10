@@ -20,6 +20,7 @@ Fixed Issues
 
   * Address range checks introduced in the module according to the protocal implementation. 
   * Read request fails if hoding register has a value that is 0.
+  * Toggling of LED in write coil implementation for consecutive execution.
 
 Known Issues
 ============
@@ -27,10 +28,6 @@ Known Issues
 Module:
  
   * Module code restructuring
-
-Application:
-
-  * LED toggles in write coil implementation for consecutive script execution.
 
 Support
 =======

@@ -268,7 +268,8 @@ static short read_input_register(unsigned short address, unsigned short &rtnval)
 static short write_single_coil(unsigned short address,
                                         unsigned short value, unsigned short &rtnval)
 {
-  int led_status;
+  unsigned short led_status;
+  unsigned short led_value;
   rtnval = 0;
   if(address > 3)
   {
@@ -277,7 +278,15 @@ static short write_single_coil(unsigned short address,
 
   p_led :> led_status;
 
-  if((led_status & (1 << address)) == value){
+  if(value == 0){
+      led_value = 0;
+  }
+  else{
+      led_value = 1;
+  }
+
+  if((led_status & (1 << address)) == led_value){
+
    }
    else if(led_status & (1 << address))
    {
